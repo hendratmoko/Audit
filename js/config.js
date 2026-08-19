@@ -4,7 +4,7 @@
  */
 const CONFIG = {
     // Ganti dengan URL Web App hasil deploy Google Apps Script (Deploy > New deployment > Web app)
-    GAS_URL: "ISI_URL_GOOGLE_APPS_SCRIPT",
+    GAS_URL: "https://script.google.com/macros/s/AKfycbw6ZAzKiENekOD3o16A7INgXzJni6lAOBtHUw7X5gLVmryf6fvzkfB3uz963eKq06ukUw/exec",
 
     SCHOOL_NAME: "SMK NEGERI 1 SANDEN",
     APP_NAME: "Sistem Audit Internal SMK",
