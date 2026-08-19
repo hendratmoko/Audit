@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hasil Audit — Sistem Audit Internal SMK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-shell" id="appShell"></div>
+
+<template id="pageTemplate">
+    <div class="page-header">
+        <div><h1>📊 Hasil Audit</h1><p>Analisis capaian mutu berdasarkan data audit aktual dari Google Sheets</p></div>
+        <div class="chip-filter">
+            <div class="field"><label>Jurusan</label><select class="input" id="filterMajor"></select></div>
+            <div class="field"><label>Bagian</label><select class="input" id="filterArea"></select></div>
+            <div class="field"><label>Status</label>
+                <select class="input" id="filterStatus"><option value="">Semua Status</option><option>Sesuai</option><option>Sebagian Sesuai</option><option>Tidak Sesuai</option><option>Tidak Berlaku</option></select>
+            </div>
+            <button class="btn btn-secondary" id="btnResetFilter">Reset Filter</button>
+            <button class="btn btn-primary" id="btnExportCSV">⬇ Export CSV</button>
+        </div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Nilai Sekolah</div><div class="kpi-value" id="kpiScoreOverall">0%</div><div id="kpiScoreCategory" style="font-size:12px;font-weight:700"></div></div>
+        <div class="kpi-card"><div class="kpi-label">Total Audit</div><div class="kpi-value" id="kpiTotalAudit">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total Temuan</div><div class="kpi-value" id="kpiTemuan">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Tindak Lanjut Berjalan</div><div class="kpi-value" id="kpiTindakLanjut">0</div></div>
+    </div>
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Sesuai</div><div class="kpi-value" id="kpiSesuai" style="color:var(--success)">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Sebagian Sesuai</div><div class="kpi-value" id="kpiSebagian" style="color:var(--warning)">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Tidak Sesuai</div><div class="kpi-value" id="kpiTidakSesuai" style="color:var(--danger)">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Tidak Berlaku</div><div class="kpi-value" id="kpiTidakBerlaku" style="color:var(--muted)">0</div></div>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card chart-card"><h3 class="card-title">📊 Status Audit</h3><canvas id="chartStatus"></canvas></div>
+        <div class="card chart-card"><h3 class="card-title">🎓 Hasil Jurusan</h3><canvas id="chartMajor"></canvas></div>
+        <div class="card chart-card"><h3 class="card-title">🧩 Hasil Bagian</h3><canvas id="chartArea"></canvas></div>
+        <div class="card chart-card"><h3 class="card-title">🕸️ Radar Performa</h3><canvas id="chartRadar"></canvas></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+        <h3 class="card-title">⚖️ Perbandingan Jurusan</h3>
+        <p class="text-muted" style="font-size:12.5px;margin-top:-8px">Untuk membantu sekolah menentukan prioritas peningkatan mutu, bukan untuk memberikan label negatif pada jurusan manapun.</p>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>#</th><th>Jurusan</th><th>Jumlah Item Dinilai</th><th>Nilai</th><th>Kategori</th></tr></thead>
+                <tbody id="comparisonTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+    <div style="display:none">
+        <canvas id="chartTrend"></canvas><canvas id="chartFindings"></canvas><canvas id="chartActionPlan"></canvas>
+    </div>
+</template>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/app.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/result.js"></script>
+<script src="js/report.js"></script>
+<script>
+(async function init() {
+    if (!Auth.guard()) return;
+    Layout.render("hasil.html");
+    App.initShell();
+    document.getElementById("pageContent").appendChild(document.getElementById("pageTemplate").content.cloneNode(true));
+
+    await ResultModule.loadAll();
+    ResultModule.populateFilterOptions();
+
+    const q = App.getQueryParam("q");
+    if (q) Utils.toast(`Menampilkan hasil pencarian untuk: "${q}"`, "info");
+
+    function currentFilters() {
+        return {
+            major: document.getElementById("filterMajor").value,
+            area: document.getElementById("filterArea").value,
+            status: document.getElementById("filterStatus").value
+        };
+    }
+    function refresh() {
+        const { byMajor } = ResultModule.renderDashboard(currentFilters());
+        ResultModule.renderComparisonTable(byMajor);
+        ChartUtil.compareMajors("chartMajor", byMajor.map(m => m.name), byMajor.map(m => m.score));
+    }
+    ["filterMajor", "filterArea", "filterStatus"].forEach(id => document.getElementById(id).addEventListener("change", refresh));
+    document.getElementById("btnResetFilter").addEventListener("click", () => {
+        document.getElementById("filterMajor").value = ""; document.getElementById("filterArea").value = ""; document.getElementById("filterStatus").value = "";
+        refresh();
+    });
+    document.getElementById("btnExportCSV").addEventListener("click", () => ReportModule.exportResultsCSV(ResultModule.applyFilters(currentFilters())));
+
+    refresh();
+})();
+</script>
+</body>
+</html>

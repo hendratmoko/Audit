@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Masuk — Sistem Audit Internal SMK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-logo">SA</div>
+        <p class="school-tag school-name">SMK NEGERI 1 SANDEN</p>
+        <h1 class="app-name">Sistem Audit Internal</h1>
+        <p class="subtitle app-subtitle">Digital Quality Assurance &amp; Continuous Improvement System</p>
+
+        <form id="loginForm">
+            <div class="field">
+                <label for="username">Nama Pengguna</label>
+                <input class="input" type="text" id="username" placeholder="Masukkan username" required autocomplete="username">
+            </div>
+            <div class="field">
+                <label for="password">Kata Sandi</label>
+                <input class="input" type="password" id="password" placeholder="Masukkan kata sandi" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="loginBtn">Masuk</button>
+        </form>
+
+        <p class="login-hint">
+            Hubungi Admin sekolah jika Anda belum memiliki akun.<br>
+            Data audit tersimpan aman di Google Spreadsheet sekolah.
+        </p>
+    </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    if (Auth.isLoggedIn()) window.location.href = "dashboard.html";
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("loginBtn");
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
+        btn.disabled = true; btn.textContent = "Memproses...";
+        try {
+            const user = await Auth.login(username, password);
+            Utils.toast(`Selamat datang, ${user.name}`, "success");
+            setTimeout(() => window.location.href = "dashboard.html", 500);
+        } catch (err) {
+            Utils.toast("❌ Login gagal. Periksa kembali username dan kata sandi Anda.", "error");
+        } finally {
+            btn.disabled = false; btn.textContent = "Masuk";
+        }
+    });
+</script>
+</body>
+</html>

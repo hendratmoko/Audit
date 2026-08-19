@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Sistem Audit Internal SMK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/responsive.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-shell" id="appShell"></div>
+
+<template id="pageTemplate">
+    <div class="page-header">
+        <div>
+            <h1>Dashboard Sistem Audit Internal</h1>
+            <p class="school-name">SMK Negeri 1 Sanden — Ringkasan kondisi mutu seluruh lini sekolah secara real-time</p>
+        </div>
+        <div class="chip-filter">
+            <div class="field"><label>Jurusan</label><select class="input" id="filterMajor"></select></div>
+            <div class="field"><label>Bagian</label><select class="input" id="filterArea"></select></div>
+            <button class="btn btn-secondary" id="btnResetFilter">Reset Filter</button>
+        </div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Total Audit</div><div class="kpi-value" id="kpiTotalAudit">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total Item</div><div class="kpi-value" id="kpiTotalItem">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Nilai Sekolah</div><div class="kpi-value" id="kpiScoreOverall">0%</div><div class="text-muted" id="kpiScoreCategory" style="font-size:12px;font-weight:700"></div></div>
+        <div class="kpi-card"><div class="kpi-label">Total Temuan</div><div class="kpi-value" id="kpiTemuan">0</div></div>
+    </div>
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Sesuai</div><div class="kpi-value" id="kpiSesuai" style="color:var(--success)">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Sebagian Sesuai</div><div class="kpi-value" id="kpiSebagian" style="color:var(--warning)">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Tidak Sesuai</div><div class="kpi-value" id="kpiTidakSesuai" style="color:var(--danger)">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">Tindak Lanjut Berjalan</div><div class="kpi-value" id="kpiTindakLanjut">0</div></div>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card chart-card"><h3 class="card-title">📊 Status Audit</h3><canvas id="chartStatus"></canvas></div>
+        <div class="card chart-card"><h3 class="card-title">🎓 Nilai per Jurusan</h3><canvas id="chartMajor"></canvas></div>
+        <div class="card chart-card"><h3 class="card-title">🧩 Nilai per Bagian</h3><canvas id="chartArea"></canvas></div>
+        <div class="card chart-card"><h3 class="card-title">🕸️ Radar Performa Sekolah</h3><canvas id="chartRadar"></canvas></div>
+        <div class="card chart-card"><h3 class="card-title">📈 Tren Audit per Periode</h3><canvas id="chartTrend"></canvas></div>
+        <div class="card chart-card"><h3 class="card-title">🚩 Jumlah Temuan per Bagian</h3><canvas id="chartFindings"></canvas></div>
+        <div class="card chart-card"><h3 class="card-title">✅ Status Tindak Lanjut</h3><canvas id="chartActionPlan"></canvas></div>
+        <div class="card">
+            <h3 class="card-title">🏆 Peringkat Jurusan</h3>
+            <div class="rank-list" id="majorRankList"></div>
+        </div>
+    </div>
+</template>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/app.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/result.js"></script>
+<script>
+(async function init() {
+    if (!Auth.guard()) return;
+    Layout.render("dashboard.html");
+    App.initShell();
+    document.getElementById("pageContent").appendChild(document.getElementById("pageTemplate").content.cloneNode(true));
+
+    await ResultModule.loadAll();
+    ResultModule.populateFilterOptions();
+
+    function refresh() {
+        const filters = { major: document.getElementById("filterMajor").value, area: document.getElementById("filterArea").value };
+        const { byMajor } = ResultModule.renderDashboard(filters);
+        const maxScore = Math.max(1, ...byMajor.map(m => m.score));
+        document.getElementById("majorRankList").innerHTML = byMajor.slice(0, 8).map((m, i) => `
+            <div class="rank-item">
+                <div class="rank-no">${i + 1}</div>
+                <div style="flex:1">
+                    <div class="rank-name">${Utils.escapeHtml(m.name)}</div>
+                    <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(m.score / maxScore) * 100}%"></div></div>
+                </div>
+                <div class="rank-score">${m.score}%</div>
+            </div>`).join("") || `<p class="text-muted">Belum ada data audit</p>`;
+    }
+
+    document.getElementById("filterMajor").addEventListener("change", refresh);
+    document.getElementById("filterArea").addEventListener("change", refresh);
+    document.getElementById("btnResetFilter").addEventListener("click", () => {
+        document.getElementById("filterMajor").value = "";
+        document.getElementById("filterArea").value = "";
+        refresh();
+    });
+
+    refresh();
+})();
+</script>
+</body>
+</html>
