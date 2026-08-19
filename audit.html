@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit — Sistem Audit Internal SMK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/audit.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+<div class="app-shell" id="appShell"></div>
+
+<template id="pageTemplate">
+    <div class="page-header">
+        <div><h1>📋 Audit</h1><p>Kelola proses pemeriksaan: sesi baru, audit berjalan, riwayat, dan master item audit</p></div>
+    </div>
+
+    <div class="glass-panel" style="display:flex;gap:4px;padding:6px;margin-bottom:20px;overflow-x:auto">
+        <button class="btn btn-ghost tab-btn" data-tab="baru">➕ Audit Baru</button>
+        <button class="btn btn-ghost tab-btn" data-tab="berjalan">⏳ Audit Berjalan</button>
+        <button class="btn btn-ghost tab-btn" data-tab="riwayat">🗂 Riwayat Audit</button>
+        <button class="btn btn-ghost tab-btn" data-tab="item">🧾 Item Audit</button>
+        <button class="btn btn-ghost tab-btn" data-tab="jadwal">📅 Jadwal Audit</button>
+    </div>
+
+    <!-- TAB: AUDIT BARU -->
+    <div class="tab-panel" id="tab-baru">
+        <div class="card session-picker-card">
+            <h3 class="card-title">Mulai Audit Baru</h3>
+            <form id="sessionForm">
+                <div class="field"><label>Periode Audit</label><select class="input" id="sessionPeriod" required></select></div>
+                <div class="field"><label>Tanggal Audit</label><input type="date" class="input" id="sessionDate" required></div>
+                <div class="field"><label>Jurusan / Unit</label><select class="input" id="sessionMajor" required></select></div>
+                <div class="field"><label>Bagian Audit</label><select class="input" id="sessionArea" required></select></div>
+                <button type="submit" class="btn btn-primary btn-block">Mulai Isi Audit →</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TAB: AUDIT BERJALAN -->
+    <div class="tab-panel" id="tab-berjalan" style="display:none">
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Kode</th><th>Tanggal</th><th>Bagian</th><th>Jurusan</th><th>Auditor</th><th>Progress</th><th>Aksi</th></tr></thead>
+                <tbody id="ongoingTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: RIWAYAT -->
+    <div class="tab-panel" id="tab-riwayat" style="display:none">
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Kode</th><th>Tanggal</th><th>Bagian</th><th>Jurusan</th><th>Auditor</th><th>Status</th><th>Aksi</th></tr></thead>
+                <tbody id="historyTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: ITEM AUDIT -->
+    <div class="tab-panel" id="tab-item" style="display:none">
+        <div class="item-audit-toolbar">
+            <div class="field"><input class="input" id="itemSearchInput" placeholder="Cari kode / indikator..."></div>
+            <div class="field"><select class="input" id="itemFilterArea"><option value="">Semua Bagian</option></select></div>
+            <div class="field"><select class="input" id="itemFilterMajor"><option value="">Semua Jurusan</option></select></div>
+            <button class="btn btn-primary" id="btnAddItem" data-role="ADMIN,OPERATOR">+ Tambah Item Audit</button>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead><tr><th>Kode</th><th>Indikator</th><th>Bagian</th><th>Jurusan</th><th>Bobot</th><th>Status</th><th>Aksi</th></tr></thead>
+                <tbody id="itemTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: JADWAL -->
+    <div class="tab-panel" id="tab-jadwal" style="display:none">
+        <div class="card"><h3 class="card-title">📅 Jadwal Audit per Periode</h3><div id="scheduleList"></div></div>
+    </div>
+</template>
+
+<!-- Modal: Item Audit -->
+<div class="modal-backdrop" id="itemModal">
+    <div class="modal modal-lg">
+        <div class="modal-header"><h3 id="itemModalTitle">Tambah Item Audit</h3><button class="modal-close" onclick="document.getElementById('itemModal').classList.remove('show')">✕</button></div>
+        <form id="itemForm">
+            <div class="modal-body">
+                <div class="grid-2">
+                    <div class="field"><label>Kode Item</label><input class="input" id="itemCode" required></div>
+                    <div class="field"><label>Bobot</label><input type="number" min="1" class="input" id="itemWeight" value="1"></div>
+                </div>
+                <div class="field"><label>Pertanyaan / Indikator Audit</label><textarea class="input" id="itemQuestion" required></textarea></div>
+                <div class="field"><label>Deskripsi</label><textarea class="input" id="itemDescription"></textarea></div>
+                <div class="grid-2">
+                    <div class="field"><label>Bagian Audit</label><select class="input" id="itemArea" required></select></div>
+                    <div class="field"><label>Sub Bagian</label><input class="input" id="itemSubArea"></div>
+                </div>
+                <div class="grid-2">
+                    <div class="field"><label>Jurusan / Unit</label><select class="input" id="itemMajor" required></select></div>
+                    <div class="field"><label>Jenis Bukti</label><input class="input" id="itemEvidenceType" placeholder="Foto / Dokumen / Link"></div>
+                </div>
+                <div class="grid-2">
+                    <div class="field"><label>Urutan</label><input type="number" class="input" id="itemOrder" value="0"></div>
+                    <div class="field"><label>Status</label><select class="input" id="itemStatus"><option>Aktif</option><option>Nonaktif</option></select></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('itemModal').classList.remove('show')">Batal</button>
+                <button type="submit" class="btn btn-primary">Simpan Item</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/app.js"></script>
+<script src="js/audit.js"></script>
+<script>
+(async function init() {
+    if (!Auth.guard()) return;
+    Layout.render("audit.html");
+    App.initShell();
+    document.getElementById("pageContent").appendChild(document.getElementById("pageTemplate").content.cloneNode(true));
+
+    await AuditModule.loadMaster();
+    AuditModule.populateSessionForm();
+    AuditModule.renderItemTable();
+
+    // Filter dropdown untuk tab item
+    document.getElementById("itemFilterArea").innerHTML += AuditModule.state.areas.map(a => `<option value="${a.id}">${Utils.escapeHtml(a.name)}</option>`).join("");
+    document.getElementById("itemFilterMajor").innerHTML += AuditModule.state.majors.map(m => `<option value="${m.id}">${Utils.escapeHtml(m.name)}</option>`).join("");
+
+    function refreshItemFilter() {
+        AuditModule.renderItemTable({
+            q: document.getElementById("itemSearchInput").value,
+            area: document.getElementById("itemFilterArea").value,
+            major: document.getElementById("itemFilterMajor").value
+        });
+    }
+    document.getElementById("itemSearchInput").addEventListener("input", Utils.debounce(refreshItemFilter, 250));
+    document.getElementById("itemFilterArea").addEventListener("change", refreshItemFilter);
+    document.getElementById("itemFilterMajor").addEventListener("change", refreshItemFilter);
+    document.getElementById("btnAddItem").addEventListener("click", () => AuditModule.openItemForm());
+    document.getElementById("itemForm").addEventListener("submit", AuditModule.submitItemForm);
+    document.getElementById("sessionForm").addEventListener("submit", AuditModule.submitNewSession);
+
+    function renderSessionTables() {
+        const ongoing = AuditModule.state.sessions.filter(s => s.status === "ongoing");
+        const done = AuditModule.state.sessions.filter(s => s.status === "done");
+        const findLabel = (list, id, field) => list.find(x => x.id === id)?.[field] || id;
+
+        document.getElementById("ongoingTableBody").innerHTML = ongoing.map(s => `<tr>
+            <td>${Utils.escapeHtml(s.code)}</td><td>${Utils.formatDate(s.date)}</td>
+            <td>${Utils.escapeHtml(findLabel(AuditModule.state.areas, s.area_id, "name"))}</td>
+            <td>${s.major_id === 'SEMUA' ? 'SELURUH SEKOLAH' : Utils.escapeHtml(findLabel(AuditModule.state.majors, s.major_id, "name"))}</td>
+            <td>${Utils.escapeHtml(s.auditor_name || "-")}</td>
+            <td><div class="progress-track" style="width:100px"><div class="progress-fill" style="width:${s.progress || 0}%"></div></div></td>
+            <td><a class="btn btn-sm btn-primary" href="audit-fill.html?id=${s.id}">Lanjutkan</a></td>
+        </tr>`).join("") || `<tr><td colspan="7" class="empty-row">Tidak ada audit berjalan</td></tr>`;
+
+        document.getElementById("historyTableBody").innerHTML = done.map(s => `<tr>
+            <td>${Utils.escapeHtml(s.code)}</td><td>${Utils.formatDate(s.date)}</td>
+            <td>${Utils.escapeHtml(findLabel(AuditModule.state.areas, s.area_id, "name"))}</td>
+            <td>${s.major_id === 'SEMUA' ? 'SELURUH SEKOLAH' : Utils.escapeHtml(findLabel(AuditModule.state.majors, s.major_id, "name"))}</td>
+            <td>${Utils.escapeHtml(s.auditor_name || "-")}</td>
+            <td><span class="badge badge-success">Selesai</span></td>
+            <td><a class="btn btn-sm btn-secondary" href="audit-fill.html?id=${s.id}">Lihat</a></td>
+        </tr>`).join("") || `<tr><td colspan="7" class="empty-row">Belum ada riwayat audit</td></tr>`;
+
+        document.getElementById("scheduleList").innerHTML = AuditModule.state.periods.map(p => {
+            const count = AuditModule.state.sessions.filter(s => s.period_id === p.id).length;
+            return `<div class="rank-item"><div style="flex:1"><strong>${Utils.escapeHtml(p.name)}</strong><div class="text-muted" style="font-size:12px">${count} sesi audit</div></div></div>`;
+        }).join("") || `<p class="text-muted">Belum ada periode audit. Tambahkan di menu Pengaturan.</p>`;
+    }
+    renderSessionTables();
+
+    // Tab switching (mendukung deep-link via hash, mis. audit.html#item)
+    function setTab(tab) {
+        Utils.qsa(".tab-btn").forEach(b => b.classList.toggle("btn-primary", b.dataset.tab === tab));
+        Utils.qsa(".tab-panel").forEach(p => p.style.display = p.id === "tab-" + tab ? "block" : "none");
+    }
+    Utils.qsa(".tab-btn").forEach(b => b.addEventListener("click", () => { location.hash = b.dataset.tab; setTab(b.dataset.tab); }));
+    setTab((location.hash || "#baru").slice(1));
+})();
+</script>
+</body>
+</html>
