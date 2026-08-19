@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Isi Audit — Sistem Audit Internal SMK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/audit.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+<div class="app-shell" id="appShell"></div>
+
+<template id="pageTemplate">
+    <div class="page-header">
+        <div id="fillHeader"><h1>Memuat audit...</h1></div>
+        <a href="audit.html#berjalan" class="btn btn-secondary">← Kembali</a>
+    </div>
+
+    <div class="fill-progress-bar-wrap">
+        <div class="fill-progress-label"><span>Progress Pengisian</span><span id="fillProgressLabel">0 dari 0 item</span></div>
+        <div class="progress-track"><div class="progress-fill" id="fillProgressBar" style="width:0%"></div></div>
+    </div>
+
+    <div id="fillItemsContainer"></div>
+
+    <div class="glass-panel" style="padding:16px;display:flex;gap:10px;flex-wrap:wrap;position:sticky;bottom:14px;box-shadow:var(--shadow-elevated)">
+        <button class="btn btn-secondary" id="btnAddAdhoc">+ Tambah Item Audit</button>
+        <button class="btn btn-outline" id="btnSaveDraft" style="margin-left:auto">💾 Simpan Sementara</button>
+        <button class="btn btn-primary" id="btnFinish">✔ Selesaikan Audit</button>
+    </div>
+</template>
+
+<!-- Modal: Tambah item saat audit -->
+<div class="modal-backdrop" id="adhocModal">
+    <div class="modal">
+        <div class="modal-header"><h3>+ Tambah Item Audit</h3><button class="modal-close" onclick="document.getElementById('adhocModal').classList.remove('show')">✕</button></div>
+        <form id="adhocForm">
+            <div class="modal-body">
+                <div class="field"><label>Indikator / Pertanyaan</label><textarea class="input" id="adhocQuestion" required></textarea></div>
+                <div class="field"><label>Keterangan</label><textarea class="input" id="adhocDescription"></textarea></div>
+                <div class="field"><label>Bobot</label><input type="number" class="input" id="adhocWeight" value="1" min="1"></div>
+                <p class="text-muted" style="font-size:12px">Item ini akan langsung tersedia pada audit saat ini. Jika Anda bukan Admin, item akan berstatus "Menunggu Verifikasi" hingga disetujui.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('adhocModal').classList.remove('show')">Batal</button>
+                <button type="submit" class="btn btn-primary">Tambahkan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/app.js"></script>
+<script src="js/audit.js"></script>
+<script>
+(async function init() {
+    if (!Auth.guard(["ADMIN", "AUDITOR"])) return;
+    Layout.render("audit.html");
+    App.initShell();
+    document.getElementById("pageContent").appendChild(document.getElementById("pageTemplate").content.cloneNode(true));
+
+    await AuditModule.initFillPage();
+
+    document.getElementById("btnAddAdhoc").addEventListener("click", () => document.getElementById("adhocModal").classList.add("show"));
+    document.getElementById("adhocForm").addEventListener("submit", AuditModule.submitAdHocItem);
+    document.getElementById("btnSaveDraft").addEventListener("click", () => AuditModule.saveAllResults(false));
+    document.getElementById("btnFinish").addEventListener("click", () => {
+        if (Utils.confirmDialog("Selesaikan audit ini? Pastikan seluruh item sudah diisi.")) AuditModule.saveAllResults(true);
+    });
+})();
+</script>
+</body>
+</html>
