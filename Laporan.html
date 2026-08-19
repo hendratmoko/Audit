@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laporan — Sistem Audit Internal SMK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="app-shell" id="appShell"></div>
+
+<template id="pageTemplate">
+    <div class="page-header no-print">
+        <div><h1>📄 Laporan Audit</h1><p>Susun dan cetak laporan per bagian, per jurusan, atau rekap total sekolah</p></div>
+    </div>
+
+    <div class="card no-print" style="margin-bottom:18px">
+        <h3 class="card-title">Filter Laporan</h3>
+        <div class="chip-filter">
+            <div class="field"><label>Jurusan</label><select class="input" id="repMajor"><option value="">Seluruh Sekolah</option></select></div>
+            <div class="field"><label>Bagian</label><select class="input" id="repArea"><option value="">Semua Bagian</option></select></div>
+            <button class="btn btn-primary" id="btnGenerate">🔄 Buat Laporan</button>
+            <button class="btn btn-secondary" id="btnPrint">🖨 Cetak / Simpan PDF</button>
+            <button class="btn btn-outline" id="btnExportFindingsCSV">⬇ Export Temuan CSV</button>
+        </div>
+    </div>
+
+    <div style="display:none" class="no-print">
+        <canvas id="chartStatus"></canvas><canvas id="chartMajor"></canvas><canvas id="chartArea"></canvas>
+        <canvas id="chartRadar"></canvas><canvas id="chartTrend"></canvas><canvas id="chartFindings"></canvas><canvas id="chartActionPlan"></canvas>
+    </div>
+
+    <div class="card" id="reportContainer"></div>
+</template>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/app.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/result.js"></script>
+<script src="js/report.js"></script>
+<script>
+(async function init() {
+    if (!Auth.guard()) return;
+    Layout.render("laporan.html");
+    App.initShell();
+    document.getElementById("pageContent").appendChild(document.getElementById("pageTemplate").content.cloneNode(true));
+
+    await ResultModule.loadAll();
+    document.getElementById("repMajor").innerHTML += ResultModule.data.majors.map(m => `<option value="${m.id}">${Utils.escapeHtml(m.name)}</option>`).join("");
+    document.getElementById("repArea").innerHTML += ResultModule.data.areas.map(a => `<option value="${a.id}">${Utils.escapeHtml(a.name)}</option>`).join("");
+
+    async function generate() {
+        const majorId = document.getElementById("repMajor").value;
+        const areaId = document.getElementById("repArea").value;
+        const data = await ReportModule.buildSchoolReport({ major: majorId, area: areaId });
+        const meta = {
+            major: majorId ? ResultModule.data.majors.find(m => m.id === majorId)?.name : "",
+            area: areaId ? ResultModule.data.areas.find(a => a.id === areaId)?.name : ""
+        };
+        ReportModule.renderPrintableReport(document.getElementById("reportContainer"), data, meta);
+    }
+    document.getElementById("btnGenerate").addEventListener("click", generate);
+    document.getElementById("btnPrint").addEventListener("click", () => ReportModule.printReport());
+    document.getElementById("btnExportFindingsCSV").addEventListener("click", () => ReportModule.exportFindingsCSV(ResultModule.data.findings));
+
+    generate();
+})();
+</script>
+</body>
+</html>
