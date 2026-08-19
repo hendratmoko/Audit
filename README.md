@@ -1,4 +1,151 @@
 # System Audit
+
+# Sistem Audit Internal SMK
+**SMK Negeri 1 Sanden — Digital Quality Assurance & Continuous Improvement System**
+
+Aplikasi web audit internal untuk seluruh lini sekolah (manajemen, kurikulum, pembelajaran, kesiswaan, SDM, sarpras, jurusan, DUDI, K3, dll), dengan frontend di GitHub Pages dan database di Google Sheets melalui Google Apps Script (GAS).
+
+---
+
+## 1. Struktur Proyek
+
+```
+/
+├── index.html          # Login
+├── dashboard.html       # Dashboard utama
+├── audit.html           # Audit Baru / Berjalan / Riwayat / Item Audit / Jadwal
+├── audit-fill.html      # Halaman pengisian audit per sesi
+├── hasil.html           # Dashboard hasil, per jurusan/bagian, perbandingan
+├── temuan.html          # Temuan & Tindak Lanjut
+├── laporan.html         # Laporan cetak / PDF / CSV
+├── pengaturan.html      # Jurusan, Bagian Audit, Pengguna, Periode, Konfigurasi
+├── css/                 # style.css, dashboard.css, audit.css, responsive.css
+├── js/                  # config.js, utils.js, api.js, auth.js, app.js, layout.js,
+│                         audit.js, result.js, finding.js, report.js, chart.js
+└── gas/                 # Kode Google Apps Script (Code.gs, Config.gs, Utils.gs,
+                          Auth.gs, Audit.gs, Result.gs, Finding.gs)
+```
+
+> **Catatan:** data pada `pengaturan.html` (jurusan, bagian, dsb) yang dibuat oleh `setupInitialData()` hanyalah **contoh awal** agar aplikasi langsung bisa dipakai. Silakan disesuaikan/dihapus melalui menu Pengaturan.
+
+---
+
+## 2. Deploy Backend (Google Apps Script)
+
+1. Buka Spreadsheet database:
+   `https://docs.google.com/spreadsheets/d/1XhESBBj5zf0bD0ICc4WaLsSPcRIEtGV0V-VcHnFD_2M/edit`
+2. Menu **Extensions/Ekstensi → Apps Script**.
+3. Hapus isi `Code.gs` bawaan, lalu buat file baru untuk masing-masing file di folder `/gas`:
+   `Config.gs`, `Utils.gs`, `Auth.gs`, `Audit.gs`, `Result.gs`, `Finding.gs`, `Code.gs`
+   (klik ikon `+` di samping "Files" → Script, beri nama sesuai, lalu salin-tempel isinya).
+4. Pilih fungsi **`setupInitialData`** pada dropdown di toolbar editor, klik **Run**.
+   - Saat pertama kali run, Google akan meminta otorisasi izin akses Spreadsheet — klik **Review permissions**, pilih akun Anda, klik **Advanced → Go to project (unsafe)** (ini normal untuk script milik sendiri), lalu **Allow**.
+   - Fungsi ini otomatis membuat seluruh sheet + header, 1 akun admin default, serta beberapa jurusan/bagian contoh.
+5. **Deploy sebagai Web App**:
+   - Klik **Deploy → New deployment**.
+   - Pilih tipe **Web app**.
+   - **Execute as:** Me (akun Anda).
+   - **Who has access:** Anyone.
+   - Klik **Deploy**, lalu **salin URL Web App** (`https://script.google.com/macros/s/XXXXXXXXXXXX/exec`).
+6. Setiap kali Anda mengubah kode `.gs`, buat **New deployment** baru (atau kelola versi lewat "Manage deployments") agar perubahan aktif.
+
+### Akun Admin Default
+```
+Username : admin
+Password : Admin@123
+```
+**Wajib diganti** setelah login pertama kali melalui menu **Pengaturan → Pengguna**.
+
+---
+
+## 3. Konfigurasi Frontend
+
+1. Buka `js/config.js`.
+2. Ganti baris berikut dengan URL Web App hasil deploy:
+   ```js
+   GAS_URL: "https://script.google.com/macros/s/XXXXXXXXXXXX/exec",
+   ```
+3. Sesuaikan `SCHOOL_NAME`, `APP_NAME` bila perlu.
+
+---
+
+## 4. Deploy Frontend ke GitHub Pages
+
+1. Buat repository GitHub baru (misal `audit-internal-smk`).
+2. Upload seluruh isi folder proyek ini (kecuali folder `gas/`, yang hanya untuk referensi/Apps Script) ke root repository.
+3. Buka **Settings → Pages** pada repository.
+4. **Source**: `Deploy from a branch` → Branch: `main` → Folder: `/root` → **Save**.
+5. Tunggu 1–2 menit, akses melalui URL yang diberikan GitHub (`https://username.github.io/audit-internal-smk/`).
+
+---
+
+## 5. Panduan Penggunaan
+
+### a. Menambahkan Jurusan Baru
+Login sebagai ADMIN/OPERATOR → **Pengaturan → Jurusan → + Tambah Jurusan** → isi kode & nama → Simpan. Jurusan baru langsung tersedia di seluruh dropdown aplikasi tanpa perlu mengubah kode program.
+
+### b. Menambahkan Bagian Audit Baru
+**Pengaturan → Bagian Audit → + Tambah Bagian Audit** → isi kode, nama, kategori.
+
+### c. Menambahkan Item Audit
+**Audit → Item Audit → + Tambah Item Audit** → isi kode, indikator, bagian, jurusan (pilih `SEMUA JURUSAN` bila berlaku untuk semua), bobot, urutan, status.
+
+### d. Melakukan Audit (Auditor)
+1. **Audit → Audit Baru** → pilih periode, tanggal, jurusan/unit, bagian audit → **Mulai Isi Audit**.
+2. Pada setiap item: pilih status (Sesuai / Sebagian Sesuai / Tidak Sesuai / Tidak Berlaku), isi keterangan, link bukti, temuan & rekomendasi bila ada.
+3. Klik **💾 Simpan Sementara** kapan saja (progress tersimpan, dapat dilanjutkan nanti dari **Audit Berjalan**).
+4. Jika ada aspek yang belum tercakup, klik **+ Tambah Item Audit** untuk mengusulkan item baru langsung dari halaman pengisian.
+5. Setelah seluruh item terisi, klik **✔ Selesaikan Audit**.
+
+### e. Melihat Hasil
+**Hasil Audit** menampilkan dashboard, grafik status, nilai per jurusan/bagian, radar performa, dan tabel perbandingan jurusan. Gunakan filter jurusan/bagian/status untuk analisis lebih spesifik.
+
+### f. Melihat Grafik
+Seluruh grafik pada Dashboard & Hasil Audit (Chart.js) otomatis dihitung dari data `AUDIT_RESULT` di Google Sheets — tidak perlu input manual.
+
+### g. Membuat Laporan
+**Laporan** → pilih filter jurusan/bagian → **🔄 Buat Laporan** → **🖨 Cetak / Simpan PDF** (gunakan dialog cetak browser, pilih "Save as PDF"), atau **⬇ Export Temuan CSV** / **⬇ Export CSV** pada halaman Hasil Audit untuk data mentah.
+
+### h. Tindak Lanjut Temuan
+**Temuan → Daftar Temuan** → tambah/lihat temuan → klik ikon 📌 untuk membuat/memperbarui **Rencana Tindak Lanjut** (tindakan, PIC, deadline, status). Tab **Tindak Lanjut** menampilkan status keseluruhan dan menandai yang **terlambat**.
+
+### i. Backup Data
+Karena seluruh data tersimpan di Google Spreadsheet, backup cukup dilakukan lewat:
+`File → Download` (Excel/CSV) atau `File → Make a copy` secara berkala di Google Sheets.
+
+---
+
+## 6. Role & Hak Akses
+
+| Role      | Akses |
+|-----------|-------|
+| ADMIN     | Penuh — kelola pengguna, jurusan, bagian, item, verifikasi usulan item, lihat semua hasil |
+| AUDITOR   | Melakukan audit, mengisi hasil, mengusulkan item baru, melihat hasil |
+| PIMPINAN  | Melihat dashboard, hasil, grafik, laporan (tanpa mengubah data) |
+| OPERATOR  | Membantu administrasi data (jurusan, bagian, item) |
+| VIEWER    | Hanya melihat hasil tertentu |
+
+---
+
+## 7. Keamanan & Keandalan Data
+
+- Password disimpan sebagai **hash SHA-256** di Google Sheets, tidak pernah dalam bentuk teks biasa di frontend.
+- Setiap request API menyertakan **token sesi** (berlaku 8 jam) yang diverifikasi di sisi server (GAS), bukan hanya di frontend.
+- Seluruh perubahan penting dicatat pada sheet `AUDIT_LOG` (waktu, pengguna, aksi, data).
+- Jika koneksi terputus saat menyimpan hasil audit, data disimpan sementara di `localStorage` browser (bukan sebagai database utama) dan ditandai **"belum tersinkronisasi"**; klik ikon 🔄 di navbar untuk menyinkronkan ulang begitu koneksi kembali normal.
+
+---
+
+## 8. Troubleshooting
+
+| Gejala | Kemungkinan Penyebab |
+|---|---|
+| Semua permintaan gagal / toast "GAS_URL belum dikonfigurasi" | `GAS_URL` di `js/config.js` belum diisi |
+| Error "Sesi telah berakhir" | Token login sudah lewat 8 jam, silakan login kembali |
+| Data tidak muncul setelah deploy ulang GAS | Pastikan membuat **New deployment** baru, bukan hanya menyimpan kode |
+| Error CORS di console browser | Pastikan `Who has access` pada deployment Web App diset **Anyone**, dan request dikirim sebagai `text/plain` (sudah ditangani otomatis oleh `js/api.js`) |
+
+
 Berikut prompt dari GPT yang diberikan ke Anthropic Cloudeyang bisa langsung digunakan untuk meminta AI membuat **aplikasi Audit Internal SMK berbasis GitHub + Google Sheets + Google Apps Script**. Saya buat cukup detail agar AI tidak hanya membuat tampilan, tetapi juga arsitektur data, audit multi-jurusan, penambahan item audit, bukti, grafik, dan laporan.
 
 # PROMPT PEMBUATAN APLIKASI AUDIT INTERNAL SEKOLAH KEJURUAN
